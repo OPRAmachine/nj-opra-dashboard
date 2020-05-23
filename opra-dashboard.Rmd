@@ -1,0 +1,40 @@
+---
+title: "OPRA Compliance in New Jersey"
+output: flexdashboard::flex_dashboard
+runtime: shiny
+
+---
+  
+  ```{r global, include=FALSE}
+# Read in CSV files of OPRA request data
+authorities <- read.csv('data/authority_summary.csv')
+users <- read.csv('data/user_summary.csv')
+requests <- read.csv('data/output.csv')
+requests <- requests[ -c(1) ]
+```
+
+About the Tracker {.sidebar}
+-----------------------------------------------------------------------
+  
+How well are government agencies complying with New Jersey's freedom of information law, the Open Public Records Act?
+
+[OPRAmachine](https://opramachine.com/) has been tracking requests submitted by users since 2017.
+
+```{r}
+dateRangeInput('daterange', 'Filter by date range', start = '2017-10-20', end = NULL, min = NULL,
+  max = NULL, format = "yyyy-mm-dd", startview = "month",
+  weekstart = 0, language = "en", separator = " to ", width = NULL,
+  autoclose = TRUE)
+```
+
+Column
+-----------------------------------------------------------------------
+
+### OPRA requests
+  
+  ```{r}
+DT::renderDataTable({
+  DT::datatable(requests, extensions = 'Responsive', escape = FALSE, rownames = FALSE, options = list(
+    bPaginate = TRUE
+  ))
+})
