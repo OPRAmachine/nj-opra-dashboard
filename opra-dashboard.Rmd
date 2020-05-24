@@ -1,11 +1,14 @@
 ---
 title: "OPRA Compliance in New Jersey"
-output: flexdashboard::flex_dashboard
+output: 
+  flexdashboard::flex_dashboard:
+    theme: cerulean
 runtime: shiny
 
 ---
   
   ```{r global, include=FALSE}
+library(flexdashboard)
 # Read in CSV files of OPRA request data
 authorities <- read.csv('data/authority_summary.csv')
 users <- read.csv('data/user_summary.csv')
@@ -21,7 +24,7 @@ How well are government agencies complying with New Jersey's freedom of informat
 [OPRAmachine](https://opramachine.com/) has been tracking requests submitted by users since 2017.
 
 ```{r}
-dateRangeInput('daterange', 'Filter by date range', start = '2017-10-20', end = NULL, min = NULL,
+dateRangeInput('daterange', 'Filter by date range', start = '2017-10-23', end = NULL, min = NULL,
   max = NULL, format = "yyyy-mm-dd", startview = "month",
   weekstart = 0, language = "en", separator = " to ", width = NULL,
   autoclose = TRUE)
@@ -30,11 +33,43 @@ dateRangeInput('daterange', 'Filter by date range', start = '2017-10-20', end = 
 Column
 -----------------------------------------------------------------------
 
+### Total requests
+
+```{r}
+renderValueBox({
+  total_requests <- nrow(requests)
+  valueBox(total_requests , 
+           icon = "fa-copy")
+})
+```
+
+### Authorities
+
+```{r}
+renderValueBox({
+  total_auth <- nrow(authorities)
+  valueBox(total_auth , 
+           icon = "fa-university")
+})
+```
+
+### Requestors
+
+```{r}
+renderValueBox({
+  total_users <- nrow(users)
+  valueBox(total_users, 
+           icon = "fa-user-edit")
+})
+```
+
 ### OPRA requests
   
   ```{r}
 DT::renderDataTable({
-  DT::datatable(requests, extensions = 'Responsive', escape = FALSE, rownames = FALSE, options = list(
+  DT::datatable(requests, extensions = 'Responsive', escape = FALSE, rownames = FALSE,
+  options = list(
     bPaginate = TRUE
   ))
 })
+  ```
