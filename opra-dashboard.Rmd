@@ -5,6 +5,7 @@ output:
     theme: default
     orientation: rows
     source_code: "https://github.com/gavinrozzi/nj-opra-dashboard"
+    vertical_layout: fill
 runtime: shiny
 
 ---
@@ -13,6 +14,7 @@ runtime: shiny
 library(flexdashboard)
 library(tidyverse)
 library(shiny)
+library(plotly)
 
 # Read in CSV files of OPRA request data
 authorities <- read.csv('data/authority_summary.csv')
@@ -84,6 +86,7 @@ renderValueBox({
 })
 ```
 
+
 Column 
 -----------------------------------------------------------------------
 
@@ -94,6 +97,16 @@ successful <- nrow(requests %>% filter(described_state == 'successful' | describ
 rate <- round(successful / nrow(requests) * 100, digits = 2)
 
 gauge(rate, min = 0, max = 100, symbol = '%', gaugeSectors(
+  success = c(80, 100), warning = c(40, 79), danger = c(0, 39)
+))
+```
+
+### Requests answered within 7 business days
+
+```{r}
+percent_within_7days <- round(nrow(requests %>% filter(days_until_response < 7)) / nrow(requests) * 100, digits = 2)
+
+gauge(percent_within_7days, min = 0, max = 100, symbol = '%', gaugeSectors(
   success = c(80, 100), warning = c(40, 79), danger = c(0, 39)
 ))
 ```
@@ -131,17 +144,72 @@ gauge(rate, min = 0, max = 100, symbol = '%', gaugeSectors(
 ))
 ```
 
-Row
+Row {data-height=350}
 -----------------------------------------------------------------------
 
+```{r}
+# Get top 10 authorities
+top10 <- authorities %>% top_n(10)
+#top10 <- na.omit(top25[ -c(1) ])
 
-```{r warning=TRUE}
-top25 <- authorities %>% top_n(25)
-top25 <- top25[order(-authorities$request_count),]
-p <- ggplot(top25, aes(authority, request_count)) +geom_bar(stat = "identity")+theme(axis.text.x = element_text(angle = 60, hjust = 1))
-renderPlot(p)
+# Make an ordered factor
+top10$authority <- factor(top10$authority, levels = top10$authority)
+
+# Plot them with Plotly
+fig <- plot_ly(
+  x = top10$authority,
+  y = top10$request_count,
+  name = "Requests by authority",
+  type = "bar"
+)
+fig %>%
+    layout(title = 'Top 10 Authorities by request count', margin = list(b = 220), xaxis = list(tickangle = 45))
   
 ```
+
+
+```{r}
+# Get top 10 authorities TODO: replace this graph with a county choropleth
+top10 <- authorities %>% top_n(10)
+#top10 <- na.omit(top25[ -c(1) ])
+
+# Make an ordered factor
+top10$authority <- factor(top10$authority, levels = top10$authority)
+
+# Plot them with Plotly
+fig <- plot_ly(
+  x = top10$authority,
+  y = top10$request_count,
+  name = "Requests by authority",
+  type = "bar"
+)
+fig %>%
+    layout(title = 'Top 10 Authorities by request count', margin = list(b = 220), xaxis = list(tickangle = 45))
+  
+```
+
+```{r}
+# Get top 10 authorities
+top10 <- authorities %>% top_n(10)
+#top10 <- na.omit(top25[ -c(1) ])
+
+# Make an ordered factor
+top10$authority <- factor(top10$authority, levels = top10$authority)
+
+# Plot them with Plotly
+fig <- plot_ly(
+  x = top10$authority,
+  y = top10$request_count,
+  name = "Requests by authority",
+  type = "bar"
+)
+fig %>%
+    layout(title = 'Top 10 Authorities by request count', margin = list(b = 220), xaxis = list(tickangle = 45))
+  
+```
+
+Row
+-----------------------------------------------------------------------
 
 Row
 -----------------------------------------------------------------------
