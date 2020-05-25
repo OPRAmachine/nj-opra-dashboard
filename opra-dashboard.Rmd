@@ -16,9 +16,9 @@ library(shiny)
 
 # Read in CSV files of OPRA request data
 authorities <- read.csv('data/authority_summary.csv')
+authorities <- authorities[ -c(1) ]
 users <- read.csv('data/user_summary.csv')
 requests <- read.csv('data/output.csv')
-requests <- requests[ -c(1) ]
 ```
 Page 1 {data-navmenu="Home"}
 =====================================
@@ -71,8 +71,16 @@ renderValueBox({
 })
 ```
 
-### Test
-This is a test
+### Average days until response
+
+```{r}
+renderValueBox({
+  avg_response <- round(mean(na.omit(requests$days_until_response)), digits = 2)
+  valueBox(avg_response, 
+           icon = "fa-clock",
+           color = ifelse(avg_response > 7, "warning", "primary"))
+})
+```
 
 Column 
 -----------------------------------------------------------------------
