@@ -4,19 +4,24 @@ output:
   flexdashboard::flex_dashboard:
     theme: default
     orientation: rows
+    source_code: "https://github.com/gavinrozzi/nj-opra-dashboard"
 runtime: shiny
 
 ---
   
   ```{r global, include=FALSE}
 library(flexdashboard)
-library(dplyr)
+library(tidyverse)
+library(shiny)
+
 # Read in CSV files of OPRA request data
 authorities <- read.csv('data/authority_summary.csv')
 users <- read.csv('data/user_summary.csv')
 requests <- read.csv('data/output.csv')
 requests <- requests[ -c(1) ]
 ```
+Page 1 {data-navmenu="Home"}
+=====================================
 
 About the Tracker {.sidebar}
 -----------------------------------------------------------------------
@@ -32,9 +37,9 @@ dateRangeInput('daterange', 'Filter by date range', start = '2017-10-23', end = 
   autoclose = TRUE)
 ```
 
-
 Column
 -----------------------------------------------------------------------
+
 ### Total requests
 
 ```{r}
@@ -66,6 +71,8 @@ renderValueBox({
 })
 ```
 
+### Test
+This is a test
 
 Column 
 -----------------------------------------------------------------------
@@ -114,6 +121,17 @@ gauge(rate, min = 0, max = 100, symbol = '%', gaugeSectors(
 ))
 ```
 
+Row
+-----------------------------------------------------------------------
+
+
+```{r warning=TRUE}
+top25 <- authorities %>% top_n(25)
+top25 <- top25[order(-authorities$request_count),]
+p <- ggplot(top25, aes(authority, request_count)) +geom_bar(stat = "identity")+theme(axis.text.x = element_text(angle = 60, hjust = 1))
+renderPlot(p)
+  
+```
 
 Row
 -----------------------------------------------------------------------
