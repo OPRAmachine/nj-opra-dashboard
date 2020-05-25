@@ -75,7 +75,9 @@ renderValueBox({
 
 ```{r}
 renderValueBox({
-  avg_response <- round(mean(na.omit(requests$days_until_response)), digits = 2)
+  # Remove requests that failed to deliver from average response time calculation
+  requests_error_omit <- requests %>% filter(described_state != 'error_message')
+  avg_response <- round(mean(na.omit(requests_error_omit$days_until_response)), digits = 2)
   valueBox(avg_response, 
            icon = "fa-clock",
            color = ifelse(avg_response > 7, "warning", "primary"))
