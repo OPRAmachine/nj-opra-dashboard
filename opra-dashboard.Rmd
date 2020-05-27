@@ -101,7 +101,7 @@ gauge(rate, min = 0, max = 100, symbol = '%', gaugeSectors(
 ))
 ```
 
-### Requests answered within 7 business days
+### Answered within 7 business days
 
 ```{r}
 percent_within_7days <- round(nrow(requests %>% filter(days_until_response < 7)) / nrow(requests) * 100, digits = 2)
