@@ -15,14 +15,19 @@ library(flexdashboard)
 library(tidyverse)
 library(shiny)
 library(plotly)
+library(bubbles)
 
-# Read in CSV files of OPRA request data
-authorities <- read.csv('data/authority_summary.csv')
-authorities <- authorities[ -c(1) ]
-users <- read.csv('data/user_summary.csv')
+# Read in CSV file of OPRA request data
 requests <- read.csv('data/output.csv')
+
+# Request count by authority
+authorities <- requests %>% count(vars = requested_from) %>% arrange(desc(n))
+
+# Request count by user
+users <- requests %>% count(vars = requested_by) %>% arrange(desc(n))
+
 ```
-Page 1 {data-navmenu="Home"}
+Home
 =====================================
 
 About the Tracker {.sidebar}
@@ -153,12 +158,12 @@ top10 <- authorities %>% top_n(10)
 #top10 <- na.omit(top25[ -c(1) ])
 
 # Make an ordered factor
-top10$authority <- factor(top10$authority, levels = top10$authority)
+top10$vars <- factor(top10$vars, levels = top10$vars)
 
 # Plot them with Plotly
 fig <- plot_ly(
-  x = top10$authority,
-  y = top10$request_count,
+  x = top10$vars,
+  y = top10$n,
   name = "Requests by authority",
   type = "bar"
 )
@@ -174,12 +179,12 @@ top10 <- authorities %>% top_n(10)
 #top10 <- na.omit(top25[ -c(1) ])
 
 # Make an ordered factor
-top10$authority <- factor(top10$authority, levels = top10$authority)
+top10$vars <- factor(top10$vars, levels = top10$vars)
 
 # Plot them with Plotly
 fig <- plot_ly(
-  x = top10$authority,
-  y = top10$request_count,
+  x = top10$vars,
+  y = top10$n,
   name = "Requests by authority",
   type = "bar"
 )
@@ -194,12 +199,12 @@ top10 <- authorities %>% top_n(10)
 #top10 <- na.omit(top25[ -c(1) ])
 
 # Make an ordered factor
-top10$authority <- factor(top10$authority, levels = top10$authority)
+top10$vars <- factor(top10$vars, levels = top10$vars)
 
 # Plot them with Plotly
 fig <- plot_ly(
-  x = top10$authority,
-  y = top10$request_count,
+  x = top10$vars,
+  y = top10$n,
   name = "Requests by authority",
   type = "bar"
 )
@@ -210,6 +215,23 @@ fig %>%
 
 Row
 -----------------------------------------------------------------------
+
+By County
+=====================================
+
+#TODO: Get average response time for all counties, compare county. Same with towns.
+
+Compare by County {.sidebar}
+-----------------------------------------------------------------------
+  
+How well are government agencies complying with New Jersey's freedom of information law, the Open Public Records Act?
+
+By Municipality
+=====================================
+
+
+All requests 
+=====================================
 
 Row
 -----------------------------------------------------------------------
