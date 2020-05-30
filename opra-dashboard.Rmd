@@ -24,7 +24,20 @@ requests <- read.csv('data/output.csv')
 authorities <- requests %>% count(vars = requested_from) %>% arrange(desc(n))
 
 # Request count by user
-users <- requests %>% count(vars = requested_by) %>% arrange(desc(n))
+users <- requests %>% count(vars = requested_by) %>% arrange
+
+# Summaries by request state
+request_counts <- requests %>% count(vars = described_state) %>% arrange(desc(n))
+
+# Get average response time for authority TODO: move to processing script
+#1. Get all requests for that authority
+for (i in 1:nrow(authorities)) {
+authority_requests <- requests %>% filter(`requested_from` == authorities$vars[i])
+authorities$average_response_time[i] <- mean(na.omit(authority_requests$days_until_response))
+
+# Get crosswalk of counties to tag names
+counties <- read_csv('data/county_to_tag.csv')
+}
 
 ```
 Home
@@ -35,7 +48,9 @@ About the Tracker {.sidebar}
   
 How well are government agencies complying with New Jersey's freedom of information law, the Open Public Records Act?
 
-[OPRAmachine](https://opramachine.com/) has been tracking requests submitted by users since 2017.
+[OPRAmachine](https://opramachine.com/) has been tracking requests submitted by users since 2017. 
+The data displayed in this dashboard was dervied from the website. 
+This dashboard does not track all OPRA requests from New Jersey, only those that were submitted via OPRAmachine.
 
 ```{r}
 dateRangeInput('daterange', 'Filter by date range', start = '2017-10-23', end = NULL, min = NULL,
@@ -116,6 +131,7 @@ gauge(percent_within_7days, min = 0, max = 100, symbol = '%', gaugeSectors(
 ))
 ```
 
+
 ### Requests awaiting response
 
 ```{r}
@@ -149,13 +165,15 @@ gauge(rate, min = 0, max = 100, symbol = '%', gaugeSectors(
 ))
 ```
 
-Row {data-height=350}
+
+Row 
 -----------------------------------------------------------------------
 
+### Authorities with the most requests
+
 ```{r}
-# Get top 10 authorities
-top10 <- authorities %>% top_n(10)
-#top10 <- na.omit(top25[ -c(1) ])
+# Get top 10 authorities by request count
+top10 <- authorities %>% top_n(10, wt=n) %>% arrange(desc(n))
 
 # Make an ordered factor
 top10$vars <- factor(top10$vars, levels = top10$vars)
@@ -167,11 +185,12 @@ fig <- plot_ly(
   name = "Requests by authority",
   type = "bar"
 )
-fig %>%
-    layout(title = 'Top 10 Authorities by request count', margin = list(b = 220), xaxis = list(tickangle = 45))
+fig
   
 ```
 
+
+### Request states on OPRAmachine
 
 ```{r}
 # Get top 10 authorities TODO: replace this graph with a county choropleth
@@ -179,56 +198,112 @@ top10 <- authorities %>% top_n(10)
 #top10 <- na.omit(top25[ -c(1) ])
 
 # Make an ordered factor
-top10$vars <- factor(top10$vars, levels = top10$vars)
 
 # Plot them with Plotly
-fig <- plot_ly(
-  x = top10$vars,
-  y = top10$n,
-  name = "Requests by authority",
-  type = "bar"
-)
-fig %>%
-    layout(title = 'Top 10 Authorities by request count', margin = list(b = 220), xaxis = list(tickangle = 45))
+fig <- request_counts %>% plot_ly(labels=~vars, values=~n)
+fig <- fig %>% add_pie(hole = 0.6)
+fig
   
 ```
 
+
+### Slowest to respond
+
 ```{r}
-# Get top 10 authorities
-top10 <- authorities %>% top_n(10)
-#top10 <- na.omit(top25[ -c(1) ])
+# Get top 10 slowest authorities
+top10times <- authorities %>% top_n(10, wt=average_response_time) %>% arrange(desc(average_response_time))
 
 # Make an ordered factor
-top10$vars <- factor(top10$vars, levels = top10$vars)
+top10times$vars <- factor(top10$vars, levels = top10$vars)
 
 # Plot them with Plotly
 fig <- plot_ly(
-  x = top10$vars,
-  y = top10$n,
-  name = "Requests by authority",
-  type = "bar"
+  x = top10times$vars,
+  y = top10times$average_response_time,
+  name = "Top 10 longest to respond",
+  type = "bar",
 )
-fig %>%
-    layout(title = 'Top 10 Authorities by request count', margin = list(b = 220), xaxis = list(tickangle = 45))
-  
+fig
 ```
 
 Row
 -----------------------------------------------------------------------
 
+
 By County
 =====================================
 
-#TODO: Get average response time for all counties, compare county. Same with towns.
-
 Compare by County {.sidebar}
 -----------------------------------------------------------------------
+How do New Jersey's counties compare for OPRA response times?
+
+```{r}
+selectInput("county_name", "County Name", choices = counties$Name)
+#reactive({
+#filter_tag <- counties %>% filter(Name == toString(input$county_name))
+#input$county_tag < - filter_tag$Tag
+#})
+
+```
+
+Row
+-----------------------------------------------------------------------
+
+### Average days until response for this county
+
+```{r}
+
+# Get just the requests for Ocean County reapl with toString(input$county_name)
+
+county_requests <- requests %>% filter(str_detect(tag_string, 'Ocean'))
+
+# Calculate average response time for the county
+county_response_time <- mean(na.omit(county_requests$days_until_response))
+renderValueBox({
+  # Remove requests that failed to deliver from average response time calculation
+  requests_error_omit <- requests %>% filter(described_state != 'error_message')
+  avg_response <- round(mean(na.omit(requests_error_omit$days_until_response)), digits = 2)
+  valueBox(county_response_time, 
+           icon = "fa-clock",
+           color = ifelse(avg_response > 7, "warning", "primary"))
+  })
+
+```
+
+### Average days until response for all requests
+
+```{r}
+
+# Calculations for comparison across counties
+county_requests <- requests %>% filter(str_detect(tag_string, "OceanCounty"))
+# Calculate average response time for the county
+county_response_time <- round(mean(na.omit(county_requests$days_until_response)), digits = 2)
+
+requests_error_omit <- requests %>% filter(described_state != 'error_message')
+
+avg_response <- mean(na.omit(requests_error_omit$days_until_response))
+
+difference <- county_response_time / avg_response * 100
   
-How well are government agencies complying with New Jersey's freedom of information law, the Open Public Records Act?
+
+
+renderValueBox({
+  # Remove requests that failed to deliver from average response time calculation
+  requests_error_omit <- requests %>% filter(described_state != 'error_message')
+  avg_response <- round(mean(na.omit(requests_error_omit$days_until_response)), digits = 2)
+  valueBox(avg_response, 
+           icon = "fa-clock",
+           color = ifelse(avg_response > 7, "warning", "primary"))
+})
+```
+
 
 By Municipality
 =====================================
 
+```{r}
+renderBubbles(bubbles(request_counts$n, request_counts$vars))
+```
 
 All requests 
 =====================================
@@ -237,7 +312,7 @@ Row
 -----------------------------------------------------------------------
 
 
-### OPRA requests
+### All OPRA requests
   
   ```{r}
 DT::renderDataTable({
