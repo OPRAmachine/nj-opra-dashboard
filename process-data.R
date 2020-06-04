@@ -2,7 +2,10 @@
 library(tidyverse)
 library(lubridate)
 library(shiny)
+library(sqldf)
+library(usmap)
 
+# Read in OPRA request data
 requests <- read_csv('data/opra_data_5-12-20.csv')
 
 # Drop first column, not needed
@@ -10,6 +13,10 @@ requests <- requests[ -c(1) ]
 
 # Reorder requests in descending order
 requests <- requests %>% map_df(rev)
+
+# Break tags into their own columns
+requests <- requests %>% separate(tag_string, into = c("tag1","tag2","tag3", "tag4"), sep = "[ ]")
+
 
 # Calculate time difference in days between last_public_response_at and request_created_at columns
 requests$days_until_response <- as.double(difftime(requests$last_public_response_at, requests$request_created_at),

@@ -24,7 +24,7 @@ requests <- read.csv('data/output.csv')
 authorities <- requests %>% count(vars = requested_from) %>% arrange(desc(n))
 
 # Request count by user
-users <- requests %>% count(vars = requested_by) %>% arrange
+users <- requests %>% count(vars = requested_by) %>% arrange(desc(n))
 
 # Summaries by request state
 request_counts <- requests %>% count(vars = described_state) %>% arrange(desc(n))
@@ -34,10 +34,10 @@ request_counts <- requests %>% count(vars = described_state) %>% arrange(desc(n)
 for (i in 1:nrow(authorities)) {
 authority_requests <- requests %>% filter(`requested_from` == authorities$vars[i])
 authorities$average_response_time[i] <- mean(na.omit(authority_requests$days_until_response))
+}
 
 # Get crosswalk of counties to tag names
 counties <- read_csv('data/county_to_tag.csv')
-}
 
 ```
 Home
