@@ -1,0 +1,22 @@
+"","Name","Tag","total_requests","average_response_time","total_requesters"
+"1","Atlantic","AtlanticCounty",389,11.65,85
+"2","Bergen","BergenCounty",755,9.95,131
+"3","Burlington","BurlingtonCounty",472,10.76,81
+"4","Camden","CamdenCounty",528,12.24,86
+"5","Cape May","CapeMayCounty",236,7.84,32
+"6","Cumberland","CumberlandCounty",95,9.48,19
+"7","Essex","EssexCounty",512,13.21,105
+"8","Gloucester","GloucesterCounty",304,9.59,56
+"9","Hudson","HudsonCounty",188,16.11,56
+"10","Hunterdon","HunterdonCounty",91,9.18,27
+"11","Mercer","MercerCounty",282,11.31,69
+"12","Monmouth","MonmouthCounty",1477,13.34,166
+"13","Ocean","OceanCounty",2165,12.7,374
+"14","Passaic","PassaicCounty",165,10.14,45
+"15","Salem","SalemCounty",54,14.82,12
+"16","Somerset","SomersetCounty",195,10.07,26
+"17","Sussex","SussexCounty",139,9.9,33
+"18","Union","UnionCounty",447,13.64,114
+"19","Warren","WarrenCounty",200,17.58,44
+"20","Morris","MorrisCounty",285,9.52,70
+"21","Middlesex","MiddlesexCounty",1345,14.58,170

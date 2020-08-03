@@ -10,12 +10,17 @@ runtime: shiny
 
 ---
   
-  ```{r global, include=FALSE}
+```{r global, include=FALSE}
 library(flexdashboard)
 library(tidyverse)
 library(shiny)
 library(plotly)
-library(bubbles)
+library(rjson)
+
+knitr::opts_chunk$set(cache=FALSE)
+
+# Read in geojson shapefile of NJ county boundaries
+nj_counties <- rjson::fromJSON(file='data/County_Boundaries_of_NJ.geojson')
 
 # Read in CSV file of OPRA request data
 requests <- read.csv('data/output.csv')
@@ -36,14 +41,14 @@ authority_requests <- requests %>% filter(`requested_from` == authorities$vars[i
 authorities$average_response_time[i] <- mean(na.omit(authority_requests$days_until_response))
 }
 
-# Get crosswalk of counties to tag names
-counties <- read_csv('data/county_to_tag.csv')
+# Get county summaries computed from county_summaries script
+counties <- read_csv('data/county_summaries.csv')
 
 ```
 Home
 =====================================
 
-About the Tracker {.sidebar}
+About the Dashboard {.sidebar}
 -----------------------------------------------------------------------
   
 How well are government agencies complying with New Jersey's freedom of information law, the Open Public Records Act?
@@ -52,12 +57,6 @@ How well are government agencies complying with New Jersey's freedom of informat
 The data displayed in this dashboard was dervied from the website. 
 This dashboard does not track all OPRA requests from New Jersey, only those that were submitted via OPRAmachine.
 
-```{r}
-dateRangeInput('daterange', 'Filter by date range', start = '2017-10-23', end = NULL, min = NULL,
-  max = NULL, format = "yyyy-mm-dd", startview = "month",
-  weekstart = 0, language = "en", separator = " to ", width = NULL,
-  autoclose = TRUE)
-```
 
 Column
 -----------------------------------------------------------------------
@@ -71,7 +70,6 @@ renderValueBox({
            icon = "fa-copy")
 })
 ```
-
 
 ### Public authorities
 
@@ -165,8 +163,70 @@ gauge(rate, min = 0, max = 100, symbol = '%', gaugeSectors(
 ))
 ```
 
+Column {data-height=850}
+-----------------------------------------------------------------------
+### Response times by county
 
-Row 
+```{r}
+county_1 <- plot_ly() 
+county_1 <- county_1 %>% add_trace(
+  type="choroplethmapbox",
+  geojson=nj_counties,
+  locations=counties$fips_code,
+  z=counties$average_response_time,
+  featureidkey="properties.FIPSSTCO",
+  colorscale="Viridis",
+  zmin=0,
+  zmax=20,
+  marker=list(line=list(
+    width=0),
+    opacity=1.0
+  )
+)
+county_1 <- county_1 %>% layout(margin = list(b = 50, l = 50),
+                      mapbox=list(
+                        style="carto-positron",
+                        zoom = 6,
+                        center=list(lon= -74.558333, lat=40.07))
+)
+county_1 <- county_1 %>% layout(title = 'Average OPRA response time by county, 2017-2020') %>% colorbar(title = "Days until response")
+renderPlotly(county_1)
+
+```
+
+### Requests by county
+
+```{r}
+county_2 <- plot_ly() 
+county_2 <- county_2 %>% add_trace(
+  type="choroplethmapbox",
+  geojson=nj_counties,
+  locations=counties$fips_code,
+  z=counties$total_requests,
+  featureidkey="properties.FIPSSTCO",
+  colorscale="Viridis",
+  zmin=0,
+  zmax=2500,
+  marker=list(line=list(
+    width=0),
+    opacity=1.0
+  )
+)
+county_2 <- county_2 %>% layout(margin = list(b = 50, l = 50),
+                      mapbox=list(
+                        style="carto-positron",
+                        zoom = 6,
+                        center=list(lon= -74.558333, lat=40.07))
+)
+county_2 <- county_2 %>% layout(title = 'Total OPRA requests by county, 2017-2020') %>% colorbar(title = "Number of requests")
+renderPlotly(county_2)
+
+```
+
+Public Authority Statistics
+=====================================
+
+Column 
 -----------------------------------------------------------------------
 
 ### Authorities with the most requests
@@ -226,84 +286,96 @@ fig <- plot_ly(
 fig
 ```
 
+
 Row
 -----------------------------------------------------------------------
 
-
 By County
 =====================================
-
-Compare by County {.sidebar}
+  
+  Compare by County {.sidebar}
 -----------------------------------------------------------------------
-How do New Jersey's counties compare for OPRA response times?
+  How do New Jersey's counties compare for OPRA response times?
 
 ```{r}
 selectInput("county_name", "County Name", choices = counties$Name)
-#reactive({
-#filter_tag <- counties %>% filter(Name == toString(input$county_name))
-#input$county_tag < - filter_tag$Tag
-#})
 
 ```
 
 Row
 -----------------------------------------------------------------------
 
-### Average days until response for this county
+### Average response time for this county
+
 
 ```{r}
-
-# Get just the requests for Ocean County reapl with toString(input$county_name)
-
-county_requests <- requests %>% filter(str_detect(tag_string, 'Ocean'))
-
-# Calculate average response time for the county
-county_response_time <- mean(na.omit(county_requests$days_until_response))
 renderValueBox({
+  # Get tag for selected county
+  county_tag <- paste0(input$county_name,'County')
+  county_tag <- str_replace_all(string=county_tag, pattern=" ", repl="")
+  # Filter requests containing the tag
+  county_requests <- requests %>% filter(str_detect(tag1, county_tag) | str_detect(tag2, county_tag) |  str_detect(tag3, county_tag) | str_detect(tag4, county_tag)) %>% filter(described_state != 'error_message')
+  # Calculate average response time for the county
+  county_response_time <- round(mean(na.omit(county_requests$days_until_response)),digits = 2)
+  
   # Remove requests that failed to deliver from average response time calculation
   requests_error_omit <- requests %>% filter(described_state != 'error_message')
   avg_response <- round(mean(na.omit(requests_error_omit$days_until_response)), digits = 2)
-  valueBox(county_response_time, 
+  
+  valueBox(paste(county_response_time,'days'), 
            icon = "fa-clock",
            color = ifelse(avg_response > 7, "warning", "primary"))
   })
 
 ```
 
-### Average days until response for all requests
+### Average response time for all counties
+
 
 ```{r}
-
-# Calculations for comparison across counties
-county_requests <- requests %>% filter(str_detect(tag_string, "OceanCounty"))
-# Calculate average response time for the county
-county_response_time <- round(mean(na.omit(county_requests$days_until_response)), digits = 2)
-
-requests_error_omit <- requests %>% filter(described_state != 'error_message')
-
-avg_response <- mean(na.omit(requests_error_omit$days_until_response))
-
-difference <- county_response_time / avg_response * 100
-  
-
-
 renderValueBox({
-  # Remove requests that failed to deliver from average response time calculation
-  requests_error_omit <- requests %>% filter(described_state != 'error_message')
-  avg_response <- round(mean(na.omit(requests_error_omit$days_until_response)), digits = 2)
-  valueBox(avg_response, 
+  all_counties_response_time <- round(mean(counties$average_response_time), digits = 2)
+  valueBox(paste(all_counties_response_time,'days'), 
            icon = "fa-clock",
-           color = ifelse(avg_response > 7, "warning", "primary"))
+           color = ifelse(all_counties_response_time > 7, "warning", "primary"))
+  })
+
+```
+
+Row
+-----------------------------------------------------------------------
+
+```{r}
+ renderUI(tags$h1(paste(input$county_name,'County at a glance')))
+
+```
+
+```{r}
+renderUI({
+county_tag <- paste0(input$county_name, 'County')
+
+county_requests <- requests %>% filter(str_detect(tag1, county_tag) | str_detect(tag2, county_tag) |  str_detect(tag3, county_tag) | str_detect(tag4, county_tag)) %>% filter(described_state != 'error_message')
+
+county_authorities <- county_requests %>% count(vars = requested_from) %>% arrange(desc(n))
+
+# Get top 10 authorities by request count
+top10 <- county_authorities %>% top_n(10, wt=n) %>% arrange(desc(n))
+
+# Make an ordered factor
+top10$vars <- factor(top10$vars, levels = top10$vars)
+
+# Plot them with Plotly
+fig <- plot_ly(
+  x = top10$vars,
+  y = top10$n,
+  name = "Requests by authority",
+  type = "bar"
+)
+fig
 })
 ```
 
 
-By Municipality
-=====================================
-
-```{r}
-renderBubbles(bubbles(request_counts$n, request_counts$vars))
-```
 
 All requests 
 =====================================
