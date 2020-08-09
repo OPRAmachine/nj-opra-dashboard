@@ -19,7 +19,7 @@ library(mapdeck)
 library(sf)
 library(geojsonio)
 
-token = "pk.eyJ1IjoiZ2F2aW5pc20iLCJhIjoiY2s5OWNrdGQ2MXFyejNocDNvNWR5N295NCJ9.Yk6ERXNuJDvVtSHHlpmRBQ"
+token = ""
 
 # Get county summaries computed from county_summaries script
 counties <- read_csv('data/county_summaries.csv')
