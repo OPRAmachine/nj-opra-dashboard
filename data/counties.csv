@@ -1,22 +1,2 @@
-"","Name","Tag","fips_code","total_requests","average_response_time","total_requesters"
-"1","Atlantic","AtlanticCounty","34001",389,11.65,85
-"2","Bergen","BergenCounty","34003",755,9.95,131
-"3","Burlington","BurlingtonCounty","34005",472,10.76,81
-"4","Camden","CamdenCounty","34007",528,12.24,86
-"5","Cape May","CapeMayCounty","34009",236,7.84,32
-"6","Cumberland","CumberlandCounty","34011",95,9.48,19
-"7","Essex","EssexCounty","34013",512,13.21,105
-"8","Gloucester","GloucesterCounty","34015",304,9.59,56
-"9","Hudson","HudsonCounty","34017",188,16.11,56
-"10","Hunterdon","HunterdonCounty","34019",91,9.18,27
-"11","Mercer","MercerCounty","34021",282,11.31,69
-"12","Monmouth","MonmouthCounty","34025",1477,13.34,166
-"13","Ocean","OceanCounty","34029",2165,12.7,374
-"14","Passaic","PassaicCounty","34031",165,10.14,45
-"15","Salem","SalemCounty","34033",54,14.82,12
-"16","Somerset","SomersetCounty","34035",195,10.07,26
-"17","Sussex","SussexCounty","34037",139,9.9,33
-"18","Union","UnionCounty","34039",447,13.64,114
-"19","Warren","WarrenCounty","34041",200,17.58,44
-"20","Morris","MorrisCounty","34027",285,9.52,70
-"21","Middlesex","MiddlesexCounty","34023",1345,14.58,170
+"Name","Tag","request_count","waiting_response"
+"Atlantic","AtlanticCounty",

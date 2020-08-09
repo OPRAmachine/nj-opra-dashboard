@@ -10,17 +10,28 @@ runtime: shiny
 
 ---
   
-```{r global, include=FALSE}
+```{r global, warning=FALSE, include=FALSE}
 library(flexdashboard)
 library(tidyverse)
 library(shiny)
 library(plotly)
-library(rjson)
+library(mapdeck)
+library(sf)
+library(geojsonio)
 
-knitr::opts_chunk$set(cache=FALSE)
+token = "pk.eyJ1IjoiZ2F2aW5pc20iLCJhIjoiY2s5OWNrdGQ2MXFyejNocDNvNWR5N295NCJ9.Yk6ERXNuJDvVtSHHlpmRBQ"
+
+# Get county summaries computed from county_summaries script
+counties <- read_csv('data/county_summaries.csv')
+counties <- counties %>% select(-X1)
 
 # Read in geojson shapefile of NJ county boundaries
-nj_counties <- rjson::fromJSON(file='data/County_Boundaries_of_NJ.geojson')
+sf <- geojson_sf('data/County_Boundaries_of_NJ.geojson')
+
+joined <- merge(sf,counties, by.x = 'FIPSSTCO', by.y = 'fips_code')
+
+# Fix geometry column after joining
+#joined$geometry <- st_as_sfc(joined$geometry)
 
 # Read in CSV file of OPRA request data
 requests <- read.csv('data/output.csv')
@@ -41,21 +52,21 @@ authority_requests <- requests %>% filter(`requested_from` == authorities$vars[i
 authorities$average_response_time[i] <- mean(na.omit(authority_requests$days_until_response))
 }
 
-# Get county summaries computed from county_summaries script
-counties <- read_csv('data/county_summaries.csv')
-
 ```
-Home
+Statewide Overview
 =====================================
 
-About the Dashboard {.sidebar}
+About this Dashboard {.sidebar}
 -----------------------------------------------------------------------
   
-How well are government agencies complying with New Jersey's freedom of information law, the Open Public Records Act?
+**How well are public authorities complying with New Jersey's freedom of information law, the Open Public Records Act?**
 
-[OPRAmachine](https://opramachine.com/) has been tracking requests submitted by users since 2017. 
-The data displayed in this dashboard was dervied from the website. 
-This dashboard does not track all OPRA requests from New Jersey, only those that were submitted via OPRAmachine.
+The data displayed in this dashboard was derived from requests submitted using [OPRAmachine](https://opramachine.com/) since 2017. Details about the data collection process for the data presented in this dashboard [can be viewed here.](https://www.gavinrozzi.com/publication/opramachine-data-paper/)
+
+This dashboard does not track all OPRA requests filed in New Jersey, only those that were submitted via OPRAmachine.
+
+[Created by Gavin Rozzi](https://www.gavinrozzi.com)
+
 
 
 Column
@@ -104,6 +115,44 @@ renderValueBox({
 })
 ```
 
+Column
+-----------------------------------------------------------------------
+### Average response time by county
+
+```{r}
+map1 <- mapdeck(token = token, style = mapdeck_style("light"), zoom = 6.25, location = c( -74.55,40.07)) %>%
+  add_polygon(
+    data = joined
+    , layer = "polygon_layer"
+    , fill_colour = "average_response_time"
+    , auto_highlight = TRUE
+    , tooltip = "average_response_time"
+    , legend = TRUE
+    , legend_options = list(title='Days until response')
+    , update_view = FALSE
+  )
+renderMapdeck(map1)
+
+```
+
+### Request volume by county
+
+```{r}
+map2 <- mapdeck(token = token, style = mapdeck_style("light"), zoom = 6.25, location = c( -74.55,40.07)) %>%
+  add_polygon(
+    data = joined
+    , layer = "polygon_layer"
+    , fill_colour = "total_requests"
+    , auto_highlight = TRUE
+    , tooltip = "total_requests"
+    , legend = TRUE
+    , legend_options = list(title='Number of requests')
+    , update_view = FALSE
+  )
+renderMapdeck(map2)
+
+```
+
 
 Column 
 -----------------------------------------------------------------------
@@ -119,7 +168,18 @@ gauge(rate, min = 0, max = 100, symbol = '%', gaugeSectors(
 ))
 ```
 
-### Answered within 7 business days
+### Unsuccessful requests
+
+```{r}
+unsuccessful <- nrow(requests %>% filter(described_state == 'rejected' | described_state == 'not_held'))
+rate <- round(unsuccessful / nrow(requests) * 100, digits = 2)
+
+gauge(rate, min = 0, max = 100, symbol = '%', gaugeSectors(
+  success = c(80, 100), warning = c(40, 79), danger = c(0, 39)
+))
+```
+
+### Response within 7 business days
 
 ```{r}
 percent_within_7days <- round(nrow(requests %>% filter(days_until_response < 7)) / nrow(requests) * 100, digits = 2)
@@ -152,105 +212,37 @@ gauge(rate, min = 0, max = 100, symbol = '%', gaugeSectors(
 ))
 ```
 
-### Unsuccessful requests
 
-```{r}
-unsuccessful <- nrow(requests %>% filter(described_state == 'rejected' | described_state == 'not_held'))
-rate <- round(unsuccessful / nrow(requests) * 100, digits = 2)
-
-gauge(rate, min = 0, max = 100, symbol = '%', gaugeSectors(
-  success = c(80, 100), warning = c(40, 79), danger = c(0, 39)
-))
-```
-
-Column {data-height=850}
------------------------------------------------------------------------
-### Response times by county
-
-```{r}
-county_1 <- plot_ly() 
-county_1 <- county_1 %>% add_trace(
-  type="choroplethmapbox",
-  geojson=nj_counties,
-  locations=counties$fips_code,
-  z=counties$average_response_time,
-  featureidkey="properties.FIPSSTCO",
-  colorscale="Viridis",
-  zmin=0,
-  zmax=20,
-  marker=list(line=list(
-    width=0),
-    opacity=1.0
-  )
-)
-county_1 <- county_1 %>% layout(margin = list(b = 50, l = 50),
-                      mapbox=list(
-                        style="carto-positron",
-                        zoom = 6,
-                        center=list(lon= -74.558333, lat=40.07))
-)
-county_1 <- county_1 %>% layout(title = 'Average OPRA response time by county, 2017-2020') %>% colorbar(title = "Days until response")
-renderPlotly(county_1)
-
-```
-
-### Requests by county
-
-```{r}
-county_2 <- plot_ly() 
-county_2 <- county_2 %>% add_trace(
-  type="choroplethmapbox",
-  geojson=nj_counties,
-  locations=counties$fips_code,
-  z=counties$total_requests,
-  featureidkey="properties.FIPSSTCO",
-  colorscale="Viridis",
-  zmin=0,
-  zmax=2500,
-  marker=list(line=list(
-    width=0),
-    opacity=1.0
-  )
-)
-county_2 <- county_2 %>% layout(margin = list(b = 50, l = 50),
-                      mapbox=list(
-                        style="carto-positron",
-                        zoom = 6,
-                        center=list(lon= -74.558333, lat=40.07))
-)
-county_2 <- county_2 %>% layout(title = 'Total OPRA requests by county, 2017-2020') %>% colorbar(title = "Number of requests")
-renderPlotly(county_2)
-
-```
 
 Public Authority Statistics
 =====================================
 
-Column 
+Column {data-height=1024}
 -----------------------------------------------------------------------
 
 ### Authorities with the most requests
 
 ```{r}
-# Get top 10 authorities by request count
-top10 <- authorities %>% top_n(10, wt=n) %>% arrange(desc(n))
+# Get top 5 authorities by request count
+top5requests <- authorities %>% top_n(5, wt=n) %>% arrange(desc(n))
 
 # Make an ordered factor
-top10$vars <- factor(top10$vars, levels = top10$vars)
+top5requests$vars <- factor(top5requests$vars, levels = top5requests$vars)
 
 # Plot them with Plotly
-fig <- plot_ly(
-  x = top10$vars,
-  y = top10$n,
+fig1 <- plot_ly(
+  x = top5requests$vars,
+  y = top5requests$n,
   name = "Requests by authority",
-  type = "bar"
+  type = "bar",
+  cliponaxis = FALSE
 )
-fig
+renderPlotly(fig1)
   
 ```
 
 
-### Request states on OPRAmachine
+### Request states
 
 ```{r}
 # Get top 10 authorities TODO: replace this graph with a county choropleth
@@ -260,122 +252,31 @@ top10 <- authorities %>% top_n(10)
 # Make an ordered factor
 
 # Plot them with Plotly
-fig <- request_counts %>% plot_ly(labels=~vars, values=~n)
-fig <- fig %>% add_pie(hole = 0.6)
-fig
+fig2 <- request_counts %>% plot_ly(labels=~vars, values=~n) %>% add_pie(hole = 0.6)
+renderPlotly(fig2)
   
 ```
 
 
-### Slowest to respond
+### Slowest authorities to respond
 
 ```{r}
-# Get top 10 slowest authorities
-top10times <- authorities %>% top_n(10, wt=average_response_time) %>% arrange(desc(average_response_time))
+# Get top 5 slowest authorities
+top5slow <- authorities %>% top_n(5, wt=average_response_time) %>% arrange(desc(average_response_time))
 
 # Make an ordered factor
-top10times$vars <- factor(top10$vars, levels = top10$vars)
+top5slow$vars <- factor(top5slow$vars, levels = top5slow$vars)
 
 # Plot them with Plotly
-fig <- plot_ly(
-  x = top10times$vars,
-  y = top10times$average_response_time,
-  name = "Top 10 longest to respond",
+fig3 <- plot_ly(
+  x = top5slow$vars,
+  y = top5slow$average_response_time,
+  name = "Top 5 longest to respond",
   type = "bar",
-)
-fig
+  cliponaxis = FALSE
+) %>% layout(margin = list(b = 50, l = 50))
+renderPlotly(fig3)
 ```
-
-
-Row
------------------------------------------------------------------------
-
-By County
-=====================================
-  
-  Compare by County {.sidebar}
------------------------------------------------------------------------
-  How do New Jersey's counties compare for OPRA response times?
-
-```{r}
-selectInput("county_name", "County Name", choices = counties$Name)
-
-```
-
-Row
------------------------------------------------------------------------
-
-### Average response time for this county
-
-
-```{r}
-renderValueBox({
-  # Get tag for selected county
-  county_tag <- paste0(input$county_name,'County')
-  county_tag <- str_replace_all(string=county_tag, pattern=" ", repl="")
-  # Filter requests containing the tag
-  county_requests <- requests %>% filter(str_detect(tag1, county_tag) | str_detect(tag2, county_tag) |  str_detect(tag3, county_tag) | str_detect(tag4, county_tag)) %>% filter(described_state != 'error_message')
-  # Calculate average response time for the county
-  county_response_time <- round(mean(na.omit(county_requests$days_until_response)),digits = 2)
-  
-  # Remove requests that failed to deliver from average response time calculation
-  requests_error_omit <- requests %>% filter(described_state != 'error_message')
-  avg_response <- round(mean(na.omit(requests_error_omit$days_until_response)), digits = 2)
-  
-  valueBox(paste(county_response_time,'days'), 
-           icon = "fa-clock",
-           color = ifelse(avg_response > 7, "warning", "primary"))
-  })
-
-```
-
-### Average response time for all counties
-
-
-```{r}
-renderValueBox({
-  all_counties_response_time <- round(mean(counties$average_response_time), digits = 2)
-  valueBox(paste(all_counties_response_time,'days'), 
-           icon = "fa-clock",
-           color = ifelse(all_counties_response_time > 7, "warning", "primary"))
-  })
-
-```
-
-Row
------------------------------------------------------------------------
-
-```{r}
- renderUI(tags$h1(paste(input$county_name,'County at a glance')))
-
-```
-
-```{r}
-renderUI({
-county_tag <- paste0(input$county_name, 'County')
-
-county_requests <- requests %>% filter(str_detect(tag1, county_tag) | str_detect(tag2, county_tag) |  str_detect(tag3, county_tag) | str_detect(tag4, county_tag)) %>% filter(described_state != 'error_message')
-
-county_authorities <- county_requests %>% count(vars = requested_from) %>% arrange(desc(n))
-
-# Get top 10 authorities by request count
-top10 <- county_authorities %>% top_n(10, wt=n) %>% arrange(desc(n))
-
-# Make an ordered factor
-top10$vars <- factor(top10$vars, levels = top10$vars)
-
-# Plot them with Plotly
-fig <- plot_ly(
-  x = top10$vars,
-  y = top10$n,
-  name = "Requests by authority",
-  type = "bar"
-)
-fig
-})
-```
-
-
 
 All requests 
 =====================================
@@ -386,12 +287,13 @@ Row
 
 ### All OPRA requests
   
-  ```{r}
+```{r}
 DT::renderDataTable({
   DT::datatable(requests, extensions = 'Responsive', escape = FALSE, rownames = FALSE,
   options = list(
     bPaginate = TRUE
   ))
 })
-  ```
+  
+```
 

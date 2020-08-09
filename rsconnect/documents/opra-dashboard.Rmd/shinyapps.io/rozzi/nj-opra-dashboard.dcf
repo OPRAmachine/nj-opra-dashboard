@@ -1,0 +1,12 @@
+name: nj-opra-dashboard
+title: nj-opra-dashboard
+username:
+account: rozzi
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2653415
+bundleId: 3491949
+url: https://rozzi.shinyapps.io/nj-opra-dashboard/
+when: 1596938483.81673
+asMultiple: FALSE
+asStatic: FALSE
