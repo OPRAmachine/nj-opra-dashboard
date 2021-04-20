@@ -39,7 +39,7 @@ joined <- merge(sf,data, by.x = "FIPSSTCO", by.y = "fips_code")
 #joined$geometry <- st_as_sfc(joined$geometry)
 
 # Read in CSV file of OPRA request data
-requests <- read.csv('data/output.csv')
+requests <- fromJSON('http://requests.opramachine.com:8000/all-requests')
 
 # Request count by authority
 authorities <- requests %>% count(vars = requested_from) %>% arrange(desc(n))
