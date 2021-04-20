@@ -18,17 +18,22 @@ library(plotly)
 library(mapdeck)
 library(sf)
 library(geojsonio)
+library(jsonlite)
 
-token = ""
+token = "pk.eyJ1IjoiZ2F2aW5pc20iLCJhIjoiY2s5OWNrdGQ2MXFyejNocDNvNWR5N295NCJ9.Yk6ERXNuJDvVtSHHlpmRBQ"
 
 # Get county summaries computed from county_summaries script
-counties <- read_csv('data/county_summaries.csv')
-counties <- counties %>% select(-X1)
+#counties <- read_csv('data/county_summaries.csv')
+#counties <- counties %>% select(-X1)
+
+data <- fromJSON('http://requests.opramachine.com:8000/county-summaries')
+
 
 # Read in geojson shapefile of NJ county boundaries
 sf <- geojson_sf('data/County_Boundaries_of_NJ.geojson')
 
-joined <- merge(sf,counties, by.x = 'FIPSSTCO', by.y = 'fips_code')
+joined <- merge(sf,data, by.x = "FIPSSTCO", by.y = "fips_code")
+
 
 # Fix geometry column after joining
 #joined$geometry <- st_as_sfc(joined$geometry)
@@ -102,7 +107,7 @@ renderValueBox({
 })
 ```
 
-### Average days until response
+### Mean days until response
 
 ```{r}
 renderValueBox({
@@ -124,11 +129,11 @@ map1 <- mapdeck(token = token, style = mapdeck_style("light"), zoom = 6.25, loca
   add_polygon(
     data = joined
     , layer = "polygon_layer"
-    , fill_colour = "average_response_time"
+    , fill_colour = "median_response_time"
     , auto_highlight = TRUE
-    , tooltip = "average_response_time"
+    , tooltip = "median_response_time"
     , legend = TRUE
-    , legend_options = list(title='Days until response')
+    , legend_options = list(title='Median days until response')
     , update_view = FALSE
   )
 renderMapdeck(map1)
